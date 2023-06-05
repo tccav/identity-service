@@ -47,7 +47,12 @@ func main() {
 			zap.String("build_time", Time),
 		),
 	)
-	defer logger.Sync()
+	if err != nil {
+		panic(fmt.Sprintf("unable to initialize logger: %s", err))
+	}
+	defer func(logger *zap.Logger) {
+		_ = logger.Sync()
+	}(logger)
 	logger.Info("application init started, configs will be loaded")
 
 	configs, err := config.LoadConfigs()
