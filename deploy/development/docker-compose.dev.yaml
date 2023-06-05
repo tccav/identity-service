@@ -56,7 +56,7 @@ services:
       - DB_OPTIONS=sslmode=disable
       - KAFKA_HOST=kafka
       - KAFKA_PORT=9092
-      - SWAGGER_ENABLED=false
+      - SWAGGER_ENABLED=true
     networks:
       - aol
     depends_on:

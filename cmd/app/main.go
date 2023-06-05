@@ -12,11 +12,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpswagger "github.com/swaggo/http-swagger"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	"go.uber.org/zap"
 
+	_ "github.com/tccav/identity-service/api"
 	"github.com/tccav/identity-service/pkg/config"
 	"github.com/tccav/identity-service/pkg/domain/identities/idusecases"
 	"github.com/tccav/identity-service/pkg/gateways/httpserver"
@@ -101,11 +102,11 @@ func main() {
 	handler := httpserver.NewStudentsHandler(useCase, logger)
 
 	router := chi.NewRouter()
-	if configs.Swagger.Enabled {
-		router.Get("/swagger/*", httpSwagger.Handler())
-	}
 	router.Use(middleware.Logger)
 	router.Use(middleware.RequestID)
+	if configs.Swagger.Enabled {
+		router.Get("/swagger/*", httpswagger.Handler())
+	}
 	router.MethodFunc(http.MethodPost, "/v1/identities/students", handler.RegisterStudent)
 	router.Get("/healthcheck", httpserver.Healthcheck)
 	logger.Info("handlers and routes configured")
