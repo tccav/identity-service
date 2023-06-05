@@ -1,0 +1,30 @@
+name: Test & Build
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: "go.mod"
+
+      - name: Run make deps
+        run: make deps
+
+      - name: Check dep changes
+        run: if [ -n "$(git status --porcelain)" ]; then git status --porcelain && exit 1; fi
+
+      - name: Run make lint
+        run: make lint
+
+      - name: Run tests
+        run: make test-cov
+
+      - name: Run build
+        run: make build
