@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - aol
+    restart: unless-stopped
+  kafka:
+    image: bitnami/kafka:3.4
+    ports:
+      - "9094:9094"
+    networks:
+      - aol
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: yes
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+  kafka-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - aol
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+    depends_on:
+      - kafka
+
+  app:
+    image: pedroyremolo/identity-service
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=dev
+      - API_PORT=8000
+      - API_READ_TIMEOUT=15s
+      - API_WRITE_TIMEOUT=15s
+      - API_IDLE_TIMEOUT=1m
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=changeme
+      - DB_NAME=identity-service
+      - DB_OPTIONS=sslmode=disable
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
+      - SWAGGER_ENABLED=false
+    networks:
+      - aol
+    depends_on:
+      - kafka
+      - postgres
+
+networks:
+  aol:
+    driver: bridge
+
+volumes:
+  postgres:
