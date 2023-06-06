@@ -39,7 +39,10 @@ test: leverage-test-deps
 	@docker compose -f deploy/development/docker-compose.tests.yaml down
 
 .PHONY: test-cov
-test-cov: leverage-test-deps
+test-cov:
+	go test ./... -v -race --cover
+
+test-cov-docker:leverage-test-deps
 	go test ./... -v -race --cover
 	@docker compose -f deploy/development/docker-compose.tests.yaml down
 

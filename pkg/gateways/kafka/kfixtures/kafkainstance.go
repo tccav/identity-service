@@ -2,24 +2,49 @@ package kfixtures
 
 import (
 	"context"
+	"log"
+	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-const kafkaURL = "localhost:9094"
+const kafkaTestEnv = "KAFKA_TEST_URL"
+
+var (
+	kafkaURL = "localhost:9094"
+	once     = sync.Once{}
+)
 
 func NewKafkaClient(t *testing.T) *kgo.Client {
 	t.Helper()
 
 	ctx := context.Background()
 
+	once.Do(func() {
+		if kURL := os.Getenv(kafkaTestEnv); kURL != "" {
+			log.Printf("setting kafka test url: %s", kURL)
+			kafkaURL = kURL
+		}
+	})
 	client, err := kgo.NewClient(kgo.SeedBrokers(kafkaURL))
 	require.NoError(t, err)
 
-	err = client.Ping(ctx)
+	retryCount := 5
+	timer := time.NewTicker(5 * time.Second)
+	for range timer.C {
+		retryCount--
+		err = client.Ping(ctx)
+		if retryCount == 0 || err == nil {
+			timer.Stop()
+			break
+		}
+	}
+
 	require.NoError(t, err)
 
 	admClient := kadm.NewClient(client)

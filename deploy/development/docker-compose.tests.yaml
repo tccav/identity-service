@@ -13,6 +13,12 @@ services:
     networks:
       - id_test
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   kafka:
     image: bitnami/kafka:3.4
     ports:
@@ -25,6 +31,11 @@ services:
       KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --version"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 networks:
   id_test:
