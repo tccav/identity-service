@@ -41,6 +41,8 @@ func NewStudentsHandler(useCase identities.RegisterUseCases, logger *zap.Logger)
 // ShowEntity godoc
 // @Summary Register a student
 // @Tags Registration
+// @Param request body StudentRegisterRequest true "Student creation information"
+// @Accept json
 // @Produce json
 // @Success 201 {object} StudentRegisterResponse
 // @Failure 400 {object} HTTPError

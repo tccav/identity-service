@@ -11,11 +11,11 @@ import (
 )
 
 type RegisterUseCase struct {
-	repository    identities.StudentsRepository
+	repository    identities.StudentsRegistererRepository
 	eventProducer identities.StudentsProducer
 }
 
-func NewRegisterUseCase(repository identities.StudentsRepository, eventProducer identities.StudentsProducer) RegisterUseCase {
+func NewRegisterUseCase(repository identities.StudentsRegistererRepository, eventProducer identities.StudentsProducer) RegisterUseCase {
 	return RegisterUseCase{
 		repository:    repository,
 		eventProducer: eventProducer,

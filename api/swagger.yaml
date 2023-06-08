@@ -1,9 +1,59 @@
 definitions:
+  pkg_gateways_httpserver.AuthenticateStudentRequest:
+    properties:
+      secret:
+        example: celacanto-provoca-maremoto
+        type: string
+      student_id:
+        example: "201210204310"
+        type: string
+    type: object
+  pkg_gateways_httpserver.AuthenticateStudentResponse:
+    properties:
+      expires_at:
+        example: "2023-10-18T19:32:00.000Z"
+        format: datetime
+        type: string
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        type: string
+      token_id:
+        example: 1f6a4d3a-38c7-43fe-9790-2408fe595c93
+        format: uuidv4
+        type: string
+    type: object
   pkg_gateways_httpserver.HTTPError:
     properties:
       err_code:
         type: string
       message:
+        type: string
+    type: object
+  pkg_gateways_httpserver.StudentRegisterRequest:
+    properties:
+      birth_date:
+        example: "1990-10-18"
+        format: date
+        type: string
+      course_id:
+        example: 1f6a4d3a-38c7-43fe-9790-2408fe595c93
+        format: uuidv4
+        type: string
+      cpf:
+        example: "11111111030"
+        type: string
+      email:
+        example: jdoe@ol.com
+        format: email
+        type: string
+      id:
+        example: "201210204310"
+        type: string
+      name:
+        example: John Doe
+        type: string
+      secret:
+        example: celacanto provoca maremoto
         type: string
     type: object
   pkg_gateways_httpserver.StudentRegisterResponse:
@@ -35,6 +85,15 @@ paths:
       - Internal
   /v1/identities/students:
     post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student creation information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_gateways_httpserver.StudentRegisterRequest'
       produces:
       - application/json
       responses:
@@ -53,4 +112,33 @@ paths:
       summary: Register a student
       tags:
       - Registration
+  /v1/identities/students/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_gateways_httpserver.AuthenticateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.AuthenticateStudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+      summary: Authenticate a student
+      tags:
+      - Auth
 swagger: "2.0"

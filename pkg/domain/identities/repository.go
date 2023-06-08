@@ -6,6 +6,14 @@ import (
 	"github.com/tccav/identity-service/pkg/domain/entities"
 )
 
-type StudentsRepository interface {
+type StudentsRegistererRepository interface {
 	CreateStudent(ctx context.Context, student entities.Student) error
+}
+
+type StudentListerRepository interface {
+	GetStudentSecret(ctx context.Context, id string) (string, error)
+}
+
+type TokenRegistererRepository interface {
+	RegisterToken(ctx context.Context, token entities.Token) error
 }

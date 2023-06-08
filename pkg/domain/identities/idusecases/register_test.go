@@ -64,7 +64,7 @@ func TestRegisterUseCase_RegisterStudent(t *testing.T) {
 			wantErr: entities.ErrInvalidEmail,
 		},
 		{
-			name: "should fail due to invalid email",
+			name: "should fail due to invalid birth date",
 			input: identities.RegisterStudentInput{
 				ID:        "201126811599",
 				CourseID:  uuid.NewString(),

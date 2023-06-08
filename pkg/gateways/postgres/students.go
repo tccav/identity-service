@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -47,4 +48,19 @@ func (s StudentsRepository) CreateStudent(ctx context.Context, student entities.
 	}
 
 	return nil
+}
+
+func (s StudentsRepository) GetStudentSecret(ctx context.Context, id string) (string, error) {
+	const query = `SELECT secret FROM students WHERE id=$1`
+
+	var secret string
+	err := s.conn.QueryRow(ctx, query, id).Scan(&secret)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", identities.ErrStudentNotFound
+		}
+		return "", err
+	}
+
+	return secret, nil
 }
