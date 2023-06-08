@@ -1,4 +1,3 @@
-# Start a new stage from scratch
 FROM alpine
 
 RUN adduser -D worker
