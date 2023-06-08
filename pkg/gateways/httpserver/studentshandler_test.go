@@ -33,7 +33,7 @@ func TestStudentsHandler_RegisterStudent(t *testing.T) {
 	}{
 		{
 			name:             "should successfully create student",
-			requestBody:      hsfixtures.ValidRequestBody,
+			requestBody:      hsfixtures.ValidStudentRequestBody,
 			expectedUC:       "123451271",
 			expectedResponse: StudentRegisterResponse{ID: "123451271"},
 			expectedStatus:   http.StatusCreated,
@@ -81,7 +81,7 @@ func TestStudentsHandler_RegisterStudent(t *testing.T) {
 		},
 		{
 			name:             "should fail due to unexpected error from use case",
-			requestBody:      hsfixtures.ValidRequestBody,
+			requestBody:      hsfixtures.ValidStudentRequestBody,
 			expectedUCErr:    errors.New("unexpected"),
 			expectedResponse: unexpectedError,
 			expectedStatus:   http.StatusInternalServerError,

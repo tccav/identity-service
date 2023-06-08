@@ -9,8 +9,10 @@ import (
 
 type Configs struct {
 	Environment string `envconfig:"ENVIRONMENT" default:"dev"`
+	TokenSecret string `envconfig:"TOKEN_SECRET" required:"true"`
 	API         api
 	DB          db
+	MemoryDB    memoryDB
 	Kafka       kafka
 	Swagger     swagger
 }
@@ -37,6 +39,17 @@ func (d db) URL() string {
 		u += fmt.Sprintf("?%s", d.Options)
 	}
 	return u
+}
+
+type memoryDB struct {
+	Host     string `envconfig:"MEMORY_DB_HOST" required:"true"`
+	Port     string `envconfig:"MEMORY_DB_PORT" required:"true"`
+	User     string `envconfig:"MEMORY_DB_USER"`
+	Password string `envconfig:"MEMORY_DB_PASSWORD"`
+}
+
+func (d memoryDB) URL() string {
+	return fmt.Sprintf("%s:%s", d.Host, d.Port)
 }
 
 type kafka struct {

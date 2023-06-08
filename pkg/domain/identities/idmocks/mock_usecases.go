@@ -5,6 +5,7 @@ package idmocks
 
 import (
 	"context"
+	"github.com/tccav/identity-service/pkg/domain/entities"
 	"github.com/tccav/identity-service/pkg/domain/identities"
 	"sync"
 )
@@ -29,7 +30,7 @@ var _ identities.RegisterUseCases = &RegisterUseCasesMock{}
 //
 //	}
 type RegisterUseCasesMock struct {
-	// RegisterStudentFunc idmocks the RegisterStudent method.
+	// RegisterStudentFunc mocks the RegisterStudent method.
 	RegisterStudentFunc func(ctx context.Context, input identities.RegisterStudentInput) (string, error)
 
 	// calls tracks calls to the methods.
@@ -78,5 +79,77 @@ func (mock *RegisterUseCasesMock) RegisterStudentCalls() []struct {
 	mock.lockRegisterStudent.RLock()
 	calls = mock.calls.RegisterStudent
 	mock.lockRegisterStudent.RUnlock()
+	return calls
+}
+
+// Ensure, that AuthenticationUseCasesMock does implement identities.AuthenticationUseCases.
+// If this is not the case, regenerate this file with moq.
+var _ identities.AuthenticationUseCases = &AuthenticationUseCasesMock{}
+
+// AuthenticationUseCasesMock is a mock implementation of identities.AuthenticationUseCases.
+//
+//	func TestSomethingThatUsesAuthenticationUseCases(t *testing.T) {
+//
+//		// make and configure a mocked identities.AuthenticationUseCases
+//		mockedAuthenticationUseCases := &AuthenticationUseCasesMock{
+//			AuthenticateStudentFunc: func(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error) {
+//				panic("mock out the AuthenticateStudent method")
+//			},
+//		}
+//
+//		// use mockedAuthenticationUseCases in code that requires identities.AuthenticationUseCases
+//		// and then make assertions.
+//
+//	}
+type AuthenticationUseCasesMock struct {
+	// AuthenticateStudentFunc mocks the AuthenticateStudent method.
+	AuthenticateStudentFunc func(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// AuthenticateStudent holds details about calls to the AuthenticateStudent method.
+		AuthenticateStudent []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Input is the input argument value.
+			Input identities.AuthenticateStudentInput
+		}
+	}
+	lockAuthenticateStudent sync.RWMutex
+}
+
+// AuthenticateStudent calls AuthenticateStudentFunc.
+func (mock *AuthenticationUseCasesMock) AuthenticateStudent(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error) {
+	if mock.AuthenticateStudentFunc == nil {
+		panic("AuthenticationUseCasesMock.AuthenticateStudentFunc: method is nil but AuthenticationUseCases.AuthenticateStudent was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Input identities.AuthenticateStudentInput
+	}{
+		Ctx:   ctx,
+		Input: input,
+	}
+	mock.lockAuthenticateStudent.Lock()
+	mock.calls.AuthenticateStudent = append(mock.calls.AuthenticateStudent, callInfo)
+	mock.lockAuthenticateStudent.Unlock()
+	return mock.AuthenticateStudentFunc(ctx, input)
+}
+
+// AuthenticateStudentCalls gets all the calls that were made to AuthenticateStudent.
+// Check the length with:
+//
+//	len(mockedAuthenticationUseCases.AuthenticateStudentCalls())
+func (mock *AuthenticationUseCasesMock) AuthenticateStudentCalls() []struct {
+	Ctx   context.Context
+	Input identities.AuthenticateStudentInput
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Input identities.AuthenticateStudentInput
+	}
+	mock.lockAuthenticateStudent.RLock()
+	calls = mock.calls.AuthenticateStudent
+	mock.lockAuthenticateStudent.RUnlock()
 	return calls
 }

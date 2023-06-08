@@ -40,6 +40,21 @@ var (
 		Code:    "identity_service.error.invalid_course_id",
 		Message: "Invalid course id format was sent",
 	}
+
+	invalidCredentials = HTTPError{
+		Code:    "identity_service.error.invalid_credentials",
+		Message: "Invalid credentials were sent",
+	}
+
+	emptyStudentID = HTTPError{
+		Code:    "identity_service.error.empty_student_id",
+		Message: "Empty student id was sent",
+	}
+
+	emptySecret = HTTPError{
+		Code:    "identity_service.error.empty_secret",
+		Message: "Empty secret was sent",
+	}
 )
 
 func sendJSON(w http.ResponseWriter, status int, payload any) error {

@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	goredis "github.com/redis/go-redis/v9"
 	httpswagger "github.com/swaggo/http-swagger"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
@@ -23,6 +24,7 @@ import (
 	"github.com/tccav/identity-service/pkg/gateways/httpserver"
 	"github.com/tccav/identity-service/pkg/gateways/kafka"
 	"github.com/tccav/identity-service/pkg/gateways/postgres"
+	"github.com/tccav/identity-service/pkg/gateways/redis"
 )
 
 var (
@@ -72,6 +74,23 @@ func main() {
 	defer pool.Close()
 	logger.Info("db conn pool fetched")
 
+	redisOptions := goredis.Options{
+		Addr: configs.MemoryDB.URL(),
+	}
+	if configs.MemoryDB.User != "" {
+		redisOptions.Username = configs.MemoryDB.User
+		redisOptions.Password = configs.MemoryDB.Password
+	}
+
+	redisClient := goredis.NewClient(&redisOptions)
+	err = redisClient.Ping(ctx).Err()
+	if err != nil {
+		logger.Error("failed to fetch memory db conn", zap.Error(err))
+		return
+	}
+	defer redisClient.Close()
+	logger.Info("memory db conn pool fetched")
+
 	kOpts := []kgo.Opt{kgo.SeedBrokers(configs.Kafka.URL())}
 	if configs.Kafka.User != "" {
 		kOpts = append(kOpts, kgo.SASL(plain.Auth{
@@ -80,26 +99,32 @@ func main() {
 		}.AsMechanism()))
 	}
 
-	client, err := kgo.NewClient(kOpts...)
+	kafkaClient, err := kgo.NewClient(kOpts...)
 	if err != nil {
 		logger.Error("unable to connect to kafka broker", zap.Error(err))
 		return
 	}
-	defer client.Close()
+	defer kafkaClient.Close()
 
-	err = client.Ping(ctx)
+	err = kafkaClient.Ping(ctx)
 	if err != nil {
 		logger.Error("kafka broker unreachable", zap.Error(err))
 		return
 	}
 	logger.Info("kafka client created")
 
-	producer := kafka.NewProducer(client)
+	producer := kafka.NewProducer(kafkaClient)
 
 	studentsProducer := kafka.NewStudentsProducer(producer)
+
 	repository := postgres.NewStudentsRepository(pool)
+	tokenRepository := redis.NewTokensRepository(redisClient)
+
 	useCase := idusecases.NewRegisterUseCase(repository, studentsProducer)
+	authUseCase := idusecases.NewStudentJWTAuthenticator(repository, tokenRepository, configs.TokenSecret)
+
 	handler := httpserver.NewStudentsHandler(useCase, logger)
+	authHandler := httpserver.NewAuthenticationHandler(logger, authUseCase)
 
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
@@ -108,6 +133,7 @@ func main() {
 		router.Get("/swagger/*", httpswagger.Handler())
 	}
 	router.MethodFunc(http.MethodPost, "/v1/identities/students", handler.RegisterStudent)
+	router.MethodFunc(http.MethodPost, "/v1/identities/students/login", authHandler.AuthenticateStudent)
 	router.Get("/healthcheck", httpserver.Healthcheck)
 	logger.Info("handlers and routes configured")
 

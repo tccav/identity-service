@@ -1,7 +1,8 @@
 package hsfixtures
 
+// POST /v1/identities/students fixtures
 const (
-	ValidRequestBody = `{
+	ValidStudentRequestBody = `{
     "id": "123451271",
     "name": "John",
     "cpf": "11111111030",
@@ -55,5 +56,13 @@ const (
     "email": "jdoe@ol.com",
     "secret": "123456",
     "course_id": "657970"
+}`
+)
+
+// POST /v1/identities/students/login fixtures
+const (
+	ValidStudentLoginRequestBody = `{
+    "student_id": "123451271",
+    "secret": "123456"
 }`
 )

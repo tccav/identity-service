@@ -40,6 +40,9 @@ const docTemplate = `{
         },
         "/v1/identities/students": {
             "post": {
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -47,6 +50,17 @@ const docTemplate = `{
                     "Registration"
                 ],
                 "summary": "Register a student",
+                "parameters": [
+                    {
+                        "description": "Student creation information",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pkg_gateways_httpserver.StudentRegisterRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -68,9 +82,86 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/identities/students/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Authenticate a student",
+                "parameters": [
+                    {
+                        "description": "Student credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/pkg_gateways_httpserver.AuthenticateStudentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/pkg_gateways_httpserver.AuthenticateStudentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/pkg_gateways_httpserver.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/pkg_gateways_httpserver.HTTPError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "pkg_gateways_httpserver.AuthenticateStudentRequest": {
+            "type": "object",
+            "properties": {
+                "secret": {
+                    "type": "string",
+                    "example": "celacanto-provoca-maremoto"
+                },
+                "student_id": {
+                    "type": "string",
+                    "example": "201210204310"
+                }
+            }
+        },
+        "pkg_gateways_httpserver.AuthenticateStudentResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string",
+                    "format": "datetime",
+                    "example": "2023-10-18T19:32:00.000Z"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+                },
+                "token_id": {
+                    "type": "string",
+                    "format": "uuidv4",
+                    "example": "1f6a4d3a-38c7-43fe-9790-2408fe595c93"
+                }
+            }
+        },
         "pkg_gateways_httpserver.HTTPError": {
             "type": "object",
             "properties": {
@@ -79,6 +170,42 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "pkg_gateways_httpserver.StudentRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "1990-10-18"
+                },
+                "course_id": {
+                    "type": "string",
+                    "format": "uuidv4",
+                    "example": "1f6a4d3a-38c7-43fe-9790-2408fe595c93"
+                },
+                "cpf": {
+                    "type": "string",
+                    "example": "11111111030"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jdoe@ol.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "201210204310"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "secret": {
+                    "type": "string",
+                    "example": "celacanto provoca maremoto"
                 }
             }
         },
