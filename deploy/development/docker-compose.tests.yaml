@@ -37,6 +37,13 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - id_test
+
 networks:
   id_test:
     driver: bridge
