@@ -2,9 +2,6 @@ package kfixtures
 
 import (
 	"context"
-	"log"
-	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,11 +10,8 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-const kafkaTestEnv = "KAFKA_TEST_URL"
-
 var (
 	kafkaURL = "localhost:9094"
-	once     = sync.Once{}
 )
 
 func NewKafkaClient(t *testing.T) *kgo.Client {
@@ -25,12 +19,6 @@ func NewKafkaClient(t *testing.T) *kgo.Client {
 
 	ctx := context.Background()
 
-	once.Do(func() {
-		if kURL := os.Getenv(kafkaTestEnv); kURL != "" {
-			log.Printf("setting kafka test url: %s", kURL)
-			kafkaURL = kURL
-		}
-	})
 	client, err := kgo.NewClient(kgo.SeedBrokers(kafkaURL))
 	require.NoError(t, err)
 

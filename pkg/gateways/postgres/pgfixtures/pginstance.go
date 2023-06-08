@@ -3,6 +3,7 @@ package pgfixtures
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/url"
 	"os"
@@ -20,27 +21,22 @@ import (
 
 const (
 	projectRootPath = "./../../../../"
-	dbTestEnv       = "DB_TEST_URL"
 )
 
 var (
-	dbTestURL = "postgres://postgres:changeme@localhost:5432/%s?sslmode=disable"
-	once      = sync.Once{}
+	migrationFS fs.FS
+	dbTestURL   = "postgres://postgres:changeme@localhost:5432/%s?sslmode=disable"
+	once        = sync.Once{}
 )
 
 func NewDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	abs, err := filepath.Abs(projectRootPath)
-	require.NoError(t, err)
-
-	fs := os.DirFS(abs)
-
 	once.Do(func() {
-		if dURL := os.Getenv(dbTestEnv); dURL != "" {
-			log.Printf("setting db test url template: %s", dURL)
-			dbTestURL = dURL
-		}
+		abs, err := filepath.Abs(projectRootPath)
+		require.NoError(t, err)
+
+		migrationFS = os.DirFS(abs)
 	})
 
 	dbUrl := fmt.Sprintf(dbTestURL, uuid.NewString())
@@ -48,13 +44,13 @@ func NewDB(t *testing.T) *pgxpool.Pool {
 	u, _ := url.Parse(dbUrl)
 
 	migrator := dbmate.New(u)
-	migrator.FS = fs
+	migrator.FS = migrationFS
 
 	migrator.WaitInterval = 5 * time.Second
 	migrator.WaitTimeout = 20 * time.Second
 	migrator.WaitBefore = true
 
-	err = migrator.CreateAndMigrate()
+	err := migrator.CreateAndMigrate()
 	require.NoError(t, err)
 
 	pool, err := pgxpool.New(context.Background(), u.String())
