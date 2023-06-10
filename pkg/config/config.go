@@ -9,7 +9,7 @@ import (
 
 type Configs struct {
 	Environment string `envconfig:"ENVIRONMENT" default:"dev"`
-	TokenSecret string `envconfig:"TOKEN_SECRET" required:"true"`
+	Auth        auth
 	API         api
 	DB          db
 	MemoryDB    memoryDB
@@ -22,6 +22,24 @@ type api struct {
 	ReadTimeout  time.Duration `envconfig:"API_READ_TIMEOUT" default:"15s"`
 	WriteTimeout time.Duration `envconfig:"API_WRITE_TIMEOUT" default:"15s"`
 	IdleTimeout  time.Duration `envconfig:"API_IDLE_TIMEOUT" default:"1m"`
+}
+
+type auth struct {
+	Secret   string        `envconfig:"TOKEN_SECRET" required:"true"`
+	Issuer   string        `envconfig:"TOKEN_ISSUER" default:"uerj"`
+	Duration time.Duration `envconfig:"TOKEN_DURATION" default:"3h"`
+}
+
+func (a auth) TokenSecret() string {
+	return a.Secret
+}
+
+func (a auth) TokenIssuer() string {
+	return a.Issuer
+}
+
+func (a auth) TokenDuration() time.Duration {
+	return a.Duration
 }
 
 type db struct {

@@ -95,6 +95,9 @@ var _ identities.AuthenticationUseCases = &AuthenticationUseCasesMock{}
 //			AuthenticateStudentFunc: func(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error) {
 //				panic("mock out the AuthenticateStudent method")
 //			},
+//			VerifyAuthFunc: func(ctx context.Context, hash string) error {
+//				panic("mock out the VerifyAuth method")
+//			},
 //		}
 //
 //		// use mockedAuthenticationUseCases in code that requires identities.AuthenticationUseCases
@@ -105,6 +108,9 @@ type AuthenticationUseCasesMock struct {
 	// AuthenticateStudentFunc mocks the AuthenticateStudent method.
 	AuthenticateStudentFunc func(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error)
 
+	// VerifyAuthFunc mocks the VerifyAuth method.
+	VerifyAuthFunc func(ctx context.Context, hash string) error
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// AuthenticateStudent holds details about calls to the AuthenticateStudent method.
@@ -114,8 +120,16 @@ type AuthenticationUseCasesMock struct {
 			// Input is the input argument value.
 			Input identities.AuthenticateStudentInput
 		}
+		// VerifyAuth holds details about calls to the VerifyAuth method.
+		VerifyAuth []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Hash is the hash argument value.
+			Hash string
+		}
 	}
 	lockAuthenticateStudent sync.RWMutex
+	lockVerifyAuth          sync.RWMutex
 }
 
 // AuthenticateStudent calls AuthenticateStudentFunc.
@@ -151,5 +165,41 @@ func (mock *AuthenticationUseCasesMock) AuthenticateStudentCalls() []struct {
 	mock.lockAuthenticateStudent.RLock()
 	calls = mock.calls.AuthenticateStudent
 	mock.lockAuthenticateStudent.RUnlock()
+	return calls
+}
+
+// VerifyAuth calls VerifyAuthFunc.
+func (mock *AuthenticationUseCasesMock) VerifyAuth(ctx context.Context, hash string) error {
+	if mock.VerifyAuthFunc == nil {
+		panic("AuthenticationUseCasesMock.VerifyAuthFunc: method is nil but AuthenticationUseCases.VerifyAuth was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Hash string
+	}{
+		Ctx:  ctx,
+		Hash: hash,
+	}
+	mock.lockVerifyAuth.Lock()
+	mock.calls.VerifyAuth = append(mock.calls.VerifyAuth, callInfo)
+	mock.lockVerifyAuth.Unlock()
+	return mock.VerifyAuthFunc(ctx, hash)
+}
+
+// VerifyAuthCalls gets all the calls that were made to VerifyAuth.
+// Check the length with:
+//
+//	len(mockedAuthenticationUseCases.VerifyAuthCalls())
+func (mock *AuthenticationUseCasesMock) VerifyAuthCalls() []struct {
+	Ctx  context.Context
+	Hash string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Hash string
+	}
+	mock.lockVerifyAuth.RLock()
+	calls = mock.calls.VerifyAuth
+	mock.lockVerifyAuth.RUnlock()
 	return calls
 }

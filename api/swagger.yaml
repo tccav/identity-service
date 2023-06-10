@@ -141,4 +141,36 @@ paths:
       summary: Authenticate a student
       tags:
       - Auth
+  /v1/identities/students/verify-auth:
+    post:
+      parameters:
+      - description: Authorization token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+      summary: Verifies if Student Authentication is valid
+      tags:
+      - Auth
 swagger: "2.0"

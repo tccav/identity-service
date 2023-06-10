@@ -121,7 +121,7 @@ func main() {
 	tokenRepository := redis.NewTokensRepository(redisClient)
 
 	useCase := idusecases.NewRegisterUseCase(repository, studentsProducer)
-	authUseCase := idusecases.NewStudentJWTAuthenticator(repository, tokenRepository, configs.TokenSecret)
+	authUseCase := idusecases.NewStudentJWTAuthenticator(repository, tokenRepository, configs.Auth)
 
 	handler := httpserver.NewStudentsHandler(useCase, logger)
 	authHandler := httpserver.NewAuthenticationHandler(logger, authUseCase)
@@ -134,6 +134,7 @@ func main() {
 	}
 	router.MethodFunc(http.MethodPost, "/v1/identities/students", handler.RegisterStudent)
 	router.MethodFunc(http.MethodPost, "/v1/identities/students/login", authHandler.AuthenticateStudent)
+	router.MethodFunc(http.MethodPost, "/v1/identities/students/verify-auth", authHandler.VerifyAuthentication)
 	router.Get("/healthcheck", httpserver.Healthcheck)
 	logger.Info("handlers and routes configured")
 

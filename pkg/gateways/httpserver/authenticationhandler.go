@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -101,4 +102,61 @@ func (h AuthenticationHandler) AuthenticateStudent(w http.ResponseWriter, r *htt
 	if err != nil {
 		h.logger.Error("failed to send json response", zap.Error(err))
 	}
+}
+
+// VerifyAuthentication ...
+// ShowEntity godoc
+// @Summary Verifies if Student Authentication is valid
+// @Tags Auth
+// @Param authorization header string true "Authorization token"
+// @Produce json
+// @Success 200
+// @Failure 400 {object} HTTPError
+// @Failure 401 {object} HTTPError
+// @Failure 403 {object} HTTPError
+// @Failure 500 {object} HTTPError
+// @Router /v1/identities/students/verify-auth [post]
+func (h AuthenticationHandler) VerifyAuthentication(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authHeader := strings.Split(strings.TrimSpace(r.Header.Get("authorization")), " ")
+	if len(authHeader) != 2 || strings.ToLower(authHeader[0]) != "bearer" {
+		err := sendJSON(w, http.StatusForbidden, accessForbidden)
+		if err != nil {
+			h.logger.Error("failed to send error json response", zap.Error(err))
+		}
+		return
+	}
+
+	token := authHeader[1]
+
+	err := h.useCase.VerifyAuth(ctx, token)
+	if err != nil {
+		h.logger.Error("unable to verify user auth", zap.Error(err))
+
+		var (
+			errorPayload HTTPError
+			statusCode   int
+		)
+		switch {
+		case errors.Is(err, identities.ErrTokenNotEmitted), errors.Is(err, identities.ErrMalformedToken):
+			statusCode = http.StatusForbidden
+			errorPayload = accessForbidden
+		case errors.Is(err, identities.ErrTokenExpired):
+			statusCode = http.StatusUnauthorized
+			errorPayload = accessUnauthorized
+			w.Header().Add("WWW-Authenticate", `Bearer realm=".",error="invalid_token",uri="/v1/identities/login"`)
+		default:
+			statusCode = http.StatusInternalServerError
+			errorPayload = unexpectedError
+		}
+
+		err = sendJSON(w, statusCode, errorPayload)
+		if err != nil {
+			h.logger.Error("failed to send error json response", zap.Error(err))
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

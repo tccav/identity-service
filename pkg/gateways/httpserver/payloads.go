@@ -55,6 +55,16 @@ var (
 		Code:    "identity_service.error.empty_secret",
 		Message: "Empty secret was sent",
 	}
+
+	accessForbidden = HTTPError{
+		Code:    "identity_service.error.forbidden",
+		Message: "Access forbidden, do not try again",
+	}
+
+	accessUnauthorized = HTTPError{
+		Code:    "identity_service.error.unauthorized",
+		Message: "Access unauthorized",
+	}
 )
 
 func sendJSON(w http.ResponseWriter, status int, payload any) error {

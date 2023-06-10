@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -16,6 +17,30 @@ import (
 	"github.com/tccav/identity-service/pkg/gateways/redis"
 	"github.com/tccav/identity-service/pkg/gateways/redis/rfixtures"
 )
+
+type config struct {
+	secret   string
+	issuer   string
+	duration time.Duration
+}
+
+func (v config) TokenSecret() string {
+	return v.secret
+}
+
+func (v config) TokenIssuer() string {
+	return v.issuer
+}
+
+func (v config) TokenDuration() time.Duration {
+	return v.duration
+}
+
+var validConfig = config{
+	secret:   "secret_secret",
+	issuer:   "uerj",
+	duration: time.Hour,
+}
 
 func TestStudentAuthenticator_AuthenticateStudent(t *testing.T) {
 	t.Parallel()
@@ -47,7 +72,7 @@ func TestStudentAuthenticator_AuthenticateStudent(t *testing.T) {
 		rDB := rfixtures.NewDB(t)
 		tokensRepository := redis.NewTokensRepository(rDB)
 
-		s := NewStudentJWTAuthenticator(studentsRepository, tokensRepository, "test")
+		s := NewStudentJWTAuthenticator(studentsRepository, tokensRepository, validConfig)
 
 		got, err := s.AuthenticateStudent(ctx, identities.AuthenticateStudentInput{
 			StudentID:     validStudent.ID,
@@ -74,7 +99,7 @@ func TestStudentAuthenticator_AuthenticateStudent(t *testing.T) {
 			wantErr: identities.ErrEmptyStudentID,
 		},
 		{
-			name: "should fail due to empty secret",
+			name: "should fail due to empty student secret",
 			input: identities.AuthenticateStudentInput{
 				StudentID: "123456789",
 			},
@@ -98,7 +123,7 @@ func TestStudentAuthenticator_AuthenticateStudent(t *testing.T) {
 			db := pgfixtures.NewDB(t)
 			studentsRepository := postgres.NewStudentsRepository(db)
 
-			s := NewStudentJWTAuthenticator(studentsRepository, nil, "test")
+			s := NewStudentJWTAuthenticator(studentsRepository, nil, validConfig)
 
 			got, err := s.AuthenticateStudent(ctx, tc.input)
 
@@ -106,4 +131,107 @@ func TestStudentAuthenticator_AuthenticateStudent(t *testing.T) {
 			assert.Empty(t, got)
 		})
 	}
+}
+
+func TestStudentAuthenticator_VerifyAuth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should verify the auth token with success", func(t *testing.T) {
+		t.Parallel()
+
+		// prepare
+		ctx := context.Background()
+
+		rDB := rfixtures.NewDB(t)
+		tokensRepository := redis.NewTokensRepository(rDB)
+
+		s := NewStudentJWTAuthenticator(nil, tokensRepository, validConfig)
+
+		userID := uuid.NewString()
+		token, err := s.createToken(ctx, userID)
+		require.NoError(t, err)
+
+		// test
+		err = s.VerifyAuth(ctx, token.Hash)
+
+		// assert
+		assert.NoError(t, err)
+	})
+
+	tt := []struct {
+		name    string
+		input   string
+		wantErr error
+	}{
+		{
+			name:    "should fail because empty token hash was informed",
+			input:   "",
+			wantErr: identities.ErrEmptyToken,
+		},
+		{
+			name: "should fail because token issue does not match",
+			input: generateToken(t, config{
+				issuer:   "ufrj",
+				secret:   validConfig.secret,
+				duration: validConfig.duration,
+			}).Hash,
+			wantErr: identities.ErrMalformedToken,
+		},
+		{
+			name: "should fail because token secret does not match",
+			input: generateToken(t, config{
+				issuer:   validConfig.issuer,
+				secret:   "segredo",
+				duration: validConfig.duration,
+			}).Hash,
+			wantErr: identities.ErrMalformedToken,
+		},
+		{
+			name: "should fail because token is expired",
+			input: generateToken(t, config{
+				issuer:   validConfig.issuer,
+				secret:   validConfig.secret,
+				duration: -validConfig.duration,
+			}).Hash,
+			wantErr: identities.ErrTokenExpired,
+		},
+		{
+			name: "should fail because token was not emitted by us",
+			input: generateToken(t, config{
+				issuer:   validConfig.issuer,
+				secret:   validConfig.secret,
+				duration: validConfig.duration,
+			}).Hash,
+			wantErr: identities.ErrTokenNotEmitted,
+		},
+	}
+	for _, testCase := range tt {
+		tc := testCase
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+
+			rDB := rfixtures.NewDB(t)
+			tokensRepository := redis.NewTokensRepository(rDB)
+
+			s := NewStudentJWTAuthenticator(nil, tokensRepository, validConfig)
+
+			err := s.VerifyAuth(ctx, tc.input)
+
+			assert.ErrorIs(t, err, tc.wantErr)
+		})
+	}
+}
+
+func generateToken(t *testing.T, config config) entities.Token {
+	t.Helper()
+
+	token, err := jwtTokenMaker{
+		secret:   config.secret,
+		issuer:   config.issuer,
+		duration: config.duration,
+	}.buildSignedJWT(uuid.NewString())
+	require.NoError(t, err)
+
+	return token
 }
