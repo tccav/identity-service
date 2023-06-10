@@ -38,7 +38,7 @@ func TestAuthenticationHandler_AuthenticateStudent(t *testing.T) {
 		expectedUC       entities.Token
 		expectedUCErr    error
 		expectedResponse any
-		expectedStatus   any
+		expectedStatus   int
 	}{
 		{
 			name:           "should successfully authenticate student",
@@ -123,6 +123,96 @@ func TestAuthenticationHandler_AuthenticateStudent(t *testing.T) {
 
 			// assert
 			assert.Equal(t, string(expectedResponse), strings.TrimSpace(w.Body.String()))
+			assert.Equal(t, tc.expectedStatus, w.Code)
+		})
+	}
+}
+
+func TestAuthenticationHandler_VerifyAuthentication(t *testing.T) {
+	tt := []struct {
+		name             string
+		authHeader       string
+		expectedUCErr    error
+		expectedStatus   int
+		expectedResponse any
+	}{
+		{
+			name:             "should successfully verify authenticated student",
+			authHeader:       hsfixtures.ValidAuthHeader,
+			expectedStatus:   http.StatusOK,
+			expectedResponse: "",
+		},
+		{
+			name:             "should fail because auth header is malformed",
+			authHeader:       "Basic credential",
+			expectedStatus:   http.StatusForbidden,
+			expectedResponse: accessForbidden,
+		},
+		{
+			name:             "should fail because token was not emitted here",
+			authHeader:       hsfixtures.ValidAuthHeader,
+			expectedUCErr:    identities.ErrTokenNotEmitted,
+			expectedStatus:   http.StatusForbidden,
+			expectedResponse: accessForbidden,
+		},
+		{
+			name:             "should fail token is malformed",
+			authHeader:       "Bearer not_jwt",
+			expectedUCErr:    identities.ErrMalformedToken,
+			expectedStatus:   http.StatusForbidden,
+			expectedResponse: accessForbidden,
+		},
+		{
+			name:             "should fail because token is expired",
+			authHeader:       hsfixtures.ValidAuthHeader,
+			expectedUCErr:    identities.ErrTokenExpired,
+			expectedStatus:   http.StatusUnauthorized,
+			expectedResponse: accessUnauthorized,
+		},
+		{
+			name:             "should fail because an unexpected error occurred",
+			authHeader:       hsfixtures.ValidAuthHeader,
+			expectedUCErr:    errors.New("unexpected error"),
+			expectedStatus:   http.StatusInternalServerError,
+			expectedResponse: unexpectedError,
+		},
+	}
+	for _, testCase := range tt {
+		tc := testCase
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// prepare
+			logger := zap.NewNop()
+
+			useCase := idmocks.AuthenticationUseCasesMock{
+				VerifyAuthFunc: func(ctx context.Context, hash string) error {
+					return tc.expectedUCErr
+				},
+			}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(
+				http.MethodPost,
+				"/v1/identities/students/verify-auth",
+				nil)
+
+			r.Header.Add("authorization", tc.authHeader)
+
+			h := NewAuthenticationHandler(logger, &useCase)
+
+			// test
+			h.VerifyAuthentication(w, r)
+
+			// assert
+			if tc.expectedResponse != "" {
+				expectedResponse, err := json.Marshal(tc.expectedResponse)
+				require.NoError(t, err)
+
+				assert.Equal(t, string(expectedResponse), strings.TrimSpace(w.Body.String()))
+			} else {
+				assert.Empty(t, strings.TrimSpace(w.Body.String()))
+			}
 			assert.Equal(t, tc.expectedStatus, w.Code)
 		})
 	}

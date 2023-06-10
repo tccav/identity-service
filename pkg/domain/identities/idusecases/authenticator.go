@@ -10,13 +10,15 @@ import (
 	"github.com/tccav/identity-service/pkg/domain/identities"
 )
 
-type createTokenInput struct {
-	userID   string
-	duration time.Duration
+type tokenMaker interface {
+	createToken(ctx context.Context, userID string) (entities.Token, error)
+	verifyToken(ctx context.Context, hash string) error
 }
 
-type tokenMaker interface {
-	createToken(ctx context.Context, input createTokenInput) (entities.Token, error)
+type Config interface {
+	TokenSecret() string
+	TokenIssuer() string
+	TokenDuration() time.Duration
 }
 
 type StudentAuthenticator struct {
@@ -24,9 +26,11 @@ type StudentAuthenticator struct {
 	studentsRepository identities.StudentListerRepository
 }
 
-func NewStudentJWTAuthenticator(studentRepository identities.StudentListerRepository, tokenRepository identities.TokenRegistererRepository, secret string) StudentAuthenticator {
+func NewStudentJWTAuthenticator(studentRepository identities.StudentListerRepository, tokenRepository identities.TokenRegistererRepository, config Config) StudentAuthenticator {
 	maker := jwtTokenMaker{
-		secret:     secret,
+		secret:     config.TokenSecret(),
+		issuer:     config.TokenIssuer(),
+		duration:   config.TokenDuration(),
 		repository: tokenRepository,
 	}
 
@@ -55,13 +59,17 @@ func (s StudentAuthenticator) AuthenticateStudent(ctx context.Context, input ide
 		return entities.Token{}, err
 	}
 
-	token, err := s.createToken(ctx, createTokenInput{
-		userID:   input.StudentID,
-		duration: defaultTokenDuration,
-	})
+	token, err := s.createToken(ctx, input.StudentID)
 	if err != nil {
 		return entities.Token{}, err
 	}
 
 	return token, nil
+}
+
+func (s StudentAuthenticator) VerifyAuth(ctx context.Context, hash string) error {
+	if hash == "" {
+		return identities.ErrEmptyToken
+	}
+	return s.tokenMaker.verifyToken(ctx, hash)
 }

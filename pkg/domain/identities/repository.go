@@ -15,5 +15,6 @@ type StudentListerRepository interface {
 }
 
 type TokenRegistererRepository interface {
-	RegisterToken(ctx context.Context, token entities.Token) error
+	Register(ctx context.Context, token entities.Token) error
+	GetHash(ctx context.Context, id string) (string, error)
 }

@@ -17,6 +17,10 @@ var (
 	ErrEmptyStudentID   = errors.New("empty student id was sent")
 	ErrEmptySecret      = errors.New("empty secret was sent")
 	ErrSecretsDontMatch = errors.New("secrets don't match")
+	ErrEmptyToken       = errors.New("token hash informed is empty")
+	ErrTokenExpired     = errors.New("token expired")
+	ErrMalformedToken   = errors.New("malformed token")
+	ErrTokenNotEmitted  = errors.New("informed token was not emitted by this app")
 )
 
 type RegisterStudentInput struct {
@@ -40,4 +44,5 @@ type AuthenticateStudentInput struct {
 
 type AuthenticationUseCases interface {
 	AuthenticateStudent(ctx context.Context, input AuthenticateStudentInput) (entities.Token, error)
+	VerifyAuth(ctx context.Context, hash string) error
 }
