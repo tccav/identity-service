@@ -1,0 +1,56 @@
+definitions:
+  pkg_gateways_httpserver.HTTPError:
+    properties:
+      err_code:
+        type: string
+      message:
+        type: string
+    type: object
+  pkg_gateways_httpserver.StudentRegisterResponse:
+    properties:
+      id:
+        example: "201210204310"
+        type: string
+    type: object
+info:
+  contact:
+    email: pedroyremolo@gmail.com
+    name: API Support
+    url: https://github.com/tccav
+  description: Service responsible for identity management of the Aluno Online's system.
+  license:
+    name: No License
+    url: https://choosealicense.com/no-permission/
+  termsOfService: http://swagger.io/terms/
+  title: Identity Service API
+  version: "1.0"
+paths:
+  /healthcheck:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Check if service is healthy
+      tags:
+      - Internal
+  /v1/identities/students:
+    post:
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.StudentRegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg_gateways_httpserver.HTTPError'
+      summary: Register a student
+      tags:
+      - Registration
+swagger: "2.0"
