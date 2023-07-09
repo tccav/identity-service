@@ -9,20 +9,28 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	goredis "github.com/redis/go-redis/v9"
 	httpswagger "github.com/swaggo/http-swagger"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/plugin/kotel"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.uber.org/zap"
+	"moul.io/chizap"
 
 	_ "github.com/tccav/identity-service/api"
 	"github.com/tccav/identity-service/pkg/config"
 	"github.com/tccav/identity-service/pkg/domain/identities/idusecases"
 	"github.com/tccav/identity-service/pkg/gateways/httpserver"
 	"github.com/tccav/identity-service/pkg/gateways/kafka"
+	"github.com/tccav/identity-service/pkg/gateways/opentelemetry"
 	"github.com/tccav/identity-service/pkg/gateways/postgres"
 	"github.com/tccav/identity-service/pkg/gateways/redis"
 )
@@ -43,7 +51,10 @@ var (
 // @license.name No License
 // @license.url https://choosealicense.com/no-permission/
 func main() {
-	logger, err := zap.NewProduction(
+	logConfig := zap.NewProductionConfig()
+	logConfig.DisableStacktrace = true
+
+	logger, err := logConfig.Build(
 		zap.Fields(
 			zap.String("version", AppVersion),
 			zap.String("go_version", GoVersion),
@@ -61,12 +72,27 @@ func main() {
 	configs, err := config.LoadConfigs()
 	if err != nil {
 		logger.Error("failed to load configs", zap.Error(err))
+		return
 	}
 
-	logger = logger.With(zap.String("environment", configs.Environment))
+	logger = logger.With(zap.String("environment", configs.Telemetry.Environment))
+
+	tpClose, err := opentelemetry.InitProvider(logger, AppVersion, configs.Telemetry)
+	if err != nil {
+		logger.Error("failed to initialize tracer", zap.Error(err))
+		return
+	}
+	defer tpClose()
 
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, configs.DB.URL())
+	dbCfg, err := pgxpool.ParseConfig(configs.DB.URL())
+	if err != nil {
+		logger.Error("failed to parse db url", zap.Error(err))
+	}
+
+	dbCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+
+	pool, err := pgxpool.NewWithConfig(ctx, dbCfg)
 	if err != nil {
 		logger.Error("failed to start db", zap.Error(err))
 		return
@@ -91,7 +117,32 @@ func main() {
 	defer redisClient.Close()
 	logger.Info("memory db conn pool fetched")
 
-	kOpts := []kgo.Opt{kgo.SeedBrokers(configs.Kafka.URL())}
+	if err = redisotel.InstrumentTracing(redisClient); err != nil {
+		logger.Error("failed to init memory db tracing", zap.Error(err))
+		return
+	}
+	if err = redisotel.InstrumentMetrics(redisClient); err != nil {
+		logger.Error("failed to init memory db metrics", zap.Error(err))
+		return
+	}
+
+	// Create a new kotel tracer.
+	tracerOpts := []kotel.TracerOpt{
+		kotel.TracerProvider(otel.GetTracerProvider()),
+		kotel.TracerPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{})),
+	}
+	tracer := kotel.NewTracer(tracerOpts...)
+
+	// Create a new kotel service.
+	kotelOps := []kotel.Opt{
+		kotel.WithTracer(tracer),
+	}
+	kotelService := kotel.NewKotel(kotelOps...)
+
+	kOpts := []kgo.Opt{
+		kgo.SeedBrokers(configs.Kafka.URL()),
+		kgo.WithHooks(kotelService.Hooks()...),
+	}
 	if configs.Kafka.User != "" {
 		kOpts = append(kOpts, kgo.SASL(plain.Auth{
 			User: configs.Kafka.User,
@@ -123,24 +174,31 @@ func main() {
 	useCase := idusecases.NewRegisterUseCase(repository, studentsProducer)
 	authUseCase := idusecases.NewStudentJWTAuthenticator(repository, tokenRepository, configs.Auth)
 
-	handler := httpserver.NewStudentsHandler(useCase, logger)
+	studentsHandler := httpserver.NewStudentsHandler(useCase, logger)
 	authHandler := httpserver.NewAuthenticationHandler(logger, authUseCase)
 
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
 	router.Use(middleware.RequestID)
+	router.Use(chizap.New(logger, &chizap.Opts{
+		WithReferer:   true,
+		WithUserAgent: true,
+	}))
 	if configs.Swagger.Enabled {
 		router.Get("/swagger/*", httpswagger.Handler())
 	}
-	router.MethodFunc(http.MethodPost, "/v1/identities/students", handler.RegisterStudent)
+	router.MethodFunc(http.MethodPost, "/v1/identities/students", studentsHandler.RegisterStudent)
 	router.MethodFunc(http.MethodPost, "/v1/identities/students/login", authHandler.AuthenticateStudent)
 	router.MethodFunc(http.MethodPost, "/v1/identities/students/verify-auth", authHandler.VerifyAuthentication)
 	router.Get("/healthcheck", httpserver.Healthcheck)
 	logger.Info("handlers and routes configured")
 
+	handler := otelhttp.NewHandler(router, "", otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+		return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+	}))
+
 	server := http.Server{
 		Addr:              fmt.Sprintf(":%d", configs.API.Port),
-		Handler:           router,
+		Handler:           handler,
 		ReadTimeout:       configs.API.ReadTimeout,
 		ReadHeaderTimeout: configs.API.ReadTimeout,
 		WriteTimeout:      configs.API.WriteTimeout,

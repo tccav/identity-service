@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -20,7 +21,7 @@ func NewStudentsProducer(producer Producer) StudentsGateway {
 
 func (g StudentsGateway) ProduceStudentRegistered(ctx context.Context, student entities.Student, courseID string) error {
 	err := g.producer.produce(ctx, produceInput{
-		topic: "foo",
+		topic: "identity.cdc.students.0",
 		event: event{
 			ID:   uuid.NewString(),
 			Type: "student_registered",
@@ -29,6 +30,7 @@ func (g StudentsGateway) ProduceStudentRegistered(ctx context.Context, student e
 				Name:      student.Name,
 				CPF:       student.CPF,
 				Email:     student.Email,
+				BirthDate: student.BirthDate.Format(time.DateOnly),
 				CourseID:  courseID,
 			},
 		},

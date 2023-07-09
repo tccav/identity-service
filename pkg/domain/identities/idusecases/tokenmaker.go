@@ -8,6 +8,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/tccav/identity-service/pkg/domain/entities"
 	"github.com/tccav/identity-service/pkg/domain/identities"
@@ -18,9 +19,12 @@ type jwtTokenMaker struct {
 	issuer     string
 	duration   time.Duration
 	repository identities.TokenRegistererRepository
+	tracer     trace.Tracer
 }
 
 func (m jwtTokenMaker) createToken(ctx context.Context, userID string) (entities.Token, error) {
+	ctx, span := m.tracer.Start(ctx, "jwtTokenMaker.createToken")
+	defer span.End()
 	token, err := m.buildSignedJWT(userID)
 	if err != nil {
 		return entities.Token{}, err

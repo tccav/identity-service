@@ -11,5 +11,6 @@ type studentRegisteredPayload struct {
 	Name      string `json:"name"`
 	CPF       string `json:"cpf"`
 	Email     string `json:"email"`
+	BirthDate string `json:"birth_date"`
 	CourseID  string `json:"course_id"`
 }

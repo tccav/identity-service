@@ -37,7 +37,7 @@ func NewKafkaClient(t *testing.T) *kgo.Client {
 
 	admClient := kadm.NewClient(client)
 
-	_, err = admClient.CreateTopics(ctx, 1, 1, nil, "foo")
+	_, err = admClient.CreateTopics(ctx, 1, 1, nil, "identity.cdc.students.0")
 	require.NoError(t, err)
 
 	return client
