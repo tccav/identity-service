@@ -8,13 +8,19 @@ import (
 )
 
 type Configs struct {
-	Environment string `envconfig:"ENVIRONMENT" default:"dev"`
-	Auth        auth
-	API         api
-	DB          db
-	MemoryDB    memoryDB
-	Kafka       kafka
-	Swagger     swagger
+	Telemetry Telemetry
+	Auth      auth
+	API       api
+	DB        db
+	MemoryDB  memoryDB
+	Kafka     kafka
+	Swagger   swagger
+}
+
+type Telemetry struct {
+	OtelCollector string `envconfig:"OTEL_URL" required:"true"`
+	ServiceName   string `envconfig:"SERVICE_NAME" default:"identity-service"`
+	Environment   string `envconfig:"ENVIRONMENT" default:"dev"`
 }
 
 type api struct {
