@@ -2,7 +2,7 @@
 
 create table if not exists students
 (
-    id         varchar  not null primary key,
+    id         varchar not null primary key,
     name       varchar not null,
     cpf        varchar not null,
     birth_date date    not null,

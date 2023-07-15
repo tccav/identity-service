@@ -184,7 +184,7 @@ func main() {
 		WithUserAgent: true,
 	}))
 	if configs.Swagger.Enabled {
-		router.Get("/swagger/*", httpswagger.Handler())
+		router.Get("/docs/*", httpswagger.Handler())
 	}
 	router.MethodFunc(http.MethodPost, "/v1/identities/students", studentsHandler.RegisterStudent)
 	router.MethodFunc(http.MethodPost, "/v1/identities/students/login", authHandler.AuthenticateStudent)

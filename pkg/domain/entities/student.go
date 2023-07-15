@@ -38,7 +38,7 @@ func NewStudent(id string, secret string, name string, cpf string, email string,
 	}
 	secret = string(s)
 
-	if _, err = strconv.Atoi(cpf); err != nil && !brdoc.IsCPF(cpf) {
+	if _, err = strconv.Atoi(cpf); err != nil || !brdoc.IsCPF(cpf) {
 		return Student{}, ErrInvalidCPF
 	}
 

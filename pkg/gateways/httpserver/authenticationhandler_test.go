@@ -102,7 +102,10 @@ func TestAuthenticationHandler_AuthenticateStudent(t *testing.T) {
 			logger := zap.NewNop()
 
 			useCase := idmocks.AuthenticationUseCasesMock{
-				AuthenticateStudentFunc: func(ctx context.Context, input identities.AuthenticateStudentInput) (entities.Token, error) {
+				AuthenticateStudentFunc: func(
+					ctx context.Context,
+					input identities.AuthenticateStudentInput,
+				) (entities.Token, error) {
 					return tc.expectedUC, tc.expectedUCErr
 				},
 			}
